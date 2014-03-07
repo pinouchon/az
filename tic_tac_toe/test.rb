@@ -4,30 +4,44 @@ class Editor
   attr_accessor :position
   attr_accessor :buffer
 
-  @position = 0
-  @width = `/usr/bin/env tput cols`.to_i
-  @buffer = ''
+  def initialize
+    @position = 0
+    @width = `/usr/bin/env tput cols`.to_i
+    @buffer = ''
+    @history = File.read(ENV['HOME']+'/.zsh_history').force_encoding("iso-8859-1").split("\n").map {
+        |e| e[/: [0-9]+:0;(.*)/, 1]
+    }
+  end
 
-  def append_char(c)
-    @buffer << c
-    self.move_cursor_left
+  def print_line
+    print "\033[K"
+    print "$> " + @buffer
+    print "\e[D" * (@buffer.length - @position)
+  end
+
+  def add_char(c)
+    @buffer.insert(@position, c)
+    @position = @position + 1
+    print c
   end
 
   def chop_char
     last_char = @buffer[-1]
     @buffer = @buffer[0..-2]
-    self.move_cursor_right
+    self.move_cursor :left
     last_char
   end
 
-  def move_cursor_left
-    @position = @position - 1
-    puts "\e[D" # left key
-  end
-
-  def move_cursor_right
-    @position = @position + 1
-    puts "\e[C" # right key
+  def move_cursor(where)
+    {left: lambda {
+      @position = [@position - 1, 0].max
+    }, right: lambda {
+      @position = [@position + 1, @buffer.length].min
+    }, home: lambda {
+      @position = 0
+    }, end: lambda {
+      @position = @buffer.length
+    }}[where].call
   end
 end
 
@@ -111,20 +125,19 @@ end
 
 def main
   editor = Editor.new
-  puts editor.width
 
-  text = ''
+  #text = ''
   selected = 0
   1000.times do
-    print "\033[K"
-    print "$> " + text
+    editor.print_line
 
     #input =  STDIN.getch
     input = read_char
     check_break_commands(input)
 
     if input == "\177" # backspace
-      text = text[0..-2]
+      #text = text[0..-2]
+      editor.chop_char
       #puts text
       #puts text[0..-1]
       #text += "====="
@@ -133,18 +146,24 @@ def main
     elsif input == "\e[B" # key down
       selected = selected + 1
     elsif ('a'..'z').include?(input) || ('A'..'Z').include?(input)
-      text += input
-      editor.position = editor.position + 1
+      #text += input
+      #editor.position = editor.position + 1
+      editor.add_char(input)
     elsif input == ' '
-      text += input
+      #text += input
+      editor.add_char(input)
     elsif input == "\e[D" # left key
-      text += input
+      editor.move_cursor :left
+      #text += input
     elsif input == "\e[C" # right key
-      text += input
+      editor.move_cursor :right
+      #text += input
     elsif input == "\x01" # home key
-      text += "\e[D\e[D\e[D\e[D"
+      editor.move_cursor :home
+      #text += "\e[D\e[D\e[D\e[D"
     elsif input == "\x05" # end key
-      text += input
+      editor.move_cursor :end
+      #text += input
     end
 
     selected = selected % 6

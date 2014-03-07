@@ -1,0 +1,1 @@
+puts `bash -c 'history'`.inspect
