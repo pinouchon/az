@@ -1,0 +1,52 @@
+#!/usr/bin/env ruby
+$LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
+
+require 'dispel'
+require 'tic_tac_toe'
+
+def draw(ttt)
+  [ttt.board, status_line(ttt), "q=Quit r=Reset a=AI-move"].join("\n")
+end
+
+def status_line(ttt)
+  if winner = ttt.winner
+    "Player #{winner} has won!!!!"
+  elsif ttt.draw?
+    "It is a draw..."
+  else
+    "It is #{ttt.player}`s turn..."
+  end
+end
+
+Dispel::Screen.open do |screen|
+  ttt = TicTacToe.new
+  #screen.draw draw(ttt)
+  screen.draw ('hello dispel')
+
+  buffer = ''
+
+  Dispel::Keyboard.output do |key|
+    case key
+      when :up then
+        ttt.move(0, -1)
+      when :down then
+        ttt.move(0, 1)
+      when :right then
+        ttt.move(1, 0)
+      when :left then
+        ttt.move(-1, 0)
+      when "a" then
+        ttt.ai_move
+      when :enter then
+        ttt.set # enter
+      when "q" then
+        break
+      when "r" then
+        ttt = TicTacToe.new
+      else
+        buffer += key
+    end
+    #screen.draw draw(ttt)
+    screen.draw(buffer)
+  end
+end
