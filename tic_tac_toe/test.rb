@@ -3,6 +3,7 @@ class Editor
   attr_accessor :height
   attr_accessor :position
   attr_accessor :buffer
+  attr_accessor :line_selected
 
   def initialize
     @position = 0
@@ -10,12 +11,15 @@ class Editor
     @buffer = ''
     @history = File.read(ENV['HOME']+'/.zsh_history').force_encoding("iso-8859-1").split("\n").map {
         |e| e[/: [0-9]+:0;(.*)/, 1]
-    }
+    }.compact
+    @prompt = '$> '
+    @line_selected = 0
+    @completions = []
   end
 
   def print_line
     print "\033[K"
-    print "$> " + @buffer
+    print @prompt + @buffer
     print "\e[D" * (@buffer.length - @position)
   end
 
@@ -42,6 +46,65 @@ class Editor
     }, end: lambda {
       @position = @buffer.length
     }}[where].call
+  end
+
+  def tab
+    return if @line_selected == 0
+    @buffer = @completions[@line_selected - 1]
+    @position = @buffer.length
+    @line_selected = 0
+  end
+
+  def enter
+    #print "\033[6A"
+    print "\e[D" * (@position + @prompt.length)
+    print "\033[K"
+    print @prompt
+    puts @buffer
+  end
+
+  def select_line(type)
+    @line_selected += {next: 1, previous: -1}[type]
+    @line_selected = @line_selected % (@completions.length + 1)
+  end
+
+  def print_completions #(completions)
+    #@completions = completions
+    @completions.each_with_index do |c, i|
+      #print "\033[2B" #down
+      #$stdout.flush
+      #print "\033[2B" #down
+      #$stdout.flush
+      puts ''
+      if i + 1 == @line_selected
+        print "\e[47m"; print "\e[30m" # white bg; black text
+      end
+      print c
+      if i + 1 == @line_selected
+        print "\e[0m" # default colors
+      end
+      # erase to end of line
+      print "\033[K"
+      #$stdout.flush
+    end
+    (@completions.length + 1).upto 7 do
+      puts "%\033[K"
+    end
+    #puts ''
+    print "\033[7A"
+    #print "\033[u" #restore
+    #$stdout.flush
+  end
+
+  def find_completions
+    @completions = @history.map do |h|
+      if !h.empty? &&
+          (h.start_with?(@buffer) || h.include?(@buffer))
+        h[0..(width-1)]
+      else
+        nil
+      end
+    end.compact.uniq[0, 6]
   end
 end
 
@@ -123,10 +186,13 @@ def check_break_commands(input)
   #end
 end
 
+def control_character?(char)
+  char != char.tr("\u0000-\u001f\u007f\u2028", '')
+end
+
 def main
   editor = Editor.new
 
-  #text = ''
   selected = 0
   1000.times do
     editor.print_line
@@ -136,71 +202,41 @@ def main
     check_break_commands(input)
 
     if input == "\177" # backspace
-      #text = text[0..-2]
       editor.chop_char
-      #puts text
-      #puts text[0..-1]
-      #text += "====="
     elsif input == "\e[A" # key up
-      selected = selected - 1
+      editor.select_line :previous
     elsif input == "\e[B" # key down
-      selected = selected + 1
-    elsif ('a'..'z').include?(input) || ('A'..'Z').include?(input)
-      #text += input
-      #editor.position = editor.position + 1
+      editor.select_line :next
+    elsif ('a'..'z').include?(input) || ('A'..'Z').include?(input) || !control_character?(input)
       editor.add_char(input)
     elsif input == ' '
-      #text += input
       editor.add_char(input)
     elsif input == "\e[D" # left key
       editor.move_cursor :left
-      #text += input
     elsif input == "\e[C" # right key
       editor.move_cursor :right
-      #text += input
     elsif input == "\x01" # home key
       editor.move_cursor :home
-      #text += "\e[D\e[D\e[D\e[D"
     elsif input == "\x05" # end key
       editor.move_cursor :end
-      #text += input
+    elsif input == "\t" # tab key
+      editor.tab
+    elsif input == "\r" # enter key
+      editor.enter
+      system(editor.buffer)
+      exit()
+
     end
 
-    selected = selected % 6
-
-    #puts ''
     completions = ['rzer ezrzerz rzerez rezrzer ze' + input.inspect,
                    'rzer ezrzerz rzf sdfsfsderez rezrzer top: ',
                    'rzer ezrez rezrzer ze',
                    'rzerr ze',
                    'rzer ezrzerz rzerez rezrzer ze']
     completions.shuffle!
-    completions.each_with_index do |c, i|
-      #print "\033[2B" #down
-      #$stdout.flush
-      #print "\033[2B" #down
-      #$stdout.flush
-      puts ''
-      if i + 1 == selected
-        print "\e[47m"; print "\e[30m"
-      end
-      print c
-      if i + 1 == selected
-        print "\e[0m"
-      end
+    editor.find_completions
 
-      # erase to end of line
-      print "\033[K"
-
-      #$stdout.flush
-
-    end
-    puts ''
-    print "\033[6A"
-    #print "\033[u" #restore
-    #$stdout.flush
-
-
+    editor.print_completions # completions
   end
 end
 
