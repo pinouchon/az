@@ -18,7 +18,7 @@ class Editor
   end
 
   def print_line
-    print "\033[K"
+    print "\033[K" # erase to end of line
     print @prompt + @buffer
     print "\e[D" * (@buffer.length - @position)
   end
@@ -37,13 +37,13 @@ class Editor
   end
 
   def move_cursor(where)
-    {left: lambda {
+    {left: -> {
       @position = [@position - 1, 0].max
-    }, right: lambda {
+    }, right: -> {
       @position = [@position + 1, @buffer.length].min
-    }, home: lambda {
+    }, home: -> {
       @position = 0
-    }, end: lambda {
+    }, end: -> {
       @position = @buffer.length
     }}[where].call
   end
@@ -65,7 +65,7 @@ class Editor
 
   def select_line(type)
     @line_selected += {next: 1, previous: -1}[type]
-    @line_selected = @line_selected % (@completions.length + 1)
+    @line_selected %= (@completions.length + 1)
   end
 
   def print_completions #(completions)

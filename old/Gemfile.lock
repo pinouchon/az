@@ -1,0 +1,22 @@
+PATH
+  remote: .
+  specs:
+    tic_tac_toe (0.2.3)
+      dispel
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    dispel (0.0.1)
+    httparty (0.13.0)
+      json (~> 1.8)
+      multi_xml (>= 0.5.2)
+    json (1.8.1)
+    multi_xml (0.5.5)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  httparty
+  tic_tac_toe!
