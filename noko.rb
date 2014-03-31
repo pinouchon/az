@@ -30,7 +30,7 @@ def google_search(q)
 
     doc1 = Nokogiri::HTML(open(clean_href))
     doc1.css('pre').each do |pre|
-      results += pre.content
+      results << pre.content
       #puts '====================================================================='
     end
   end
@@ -39,7 +39,7 @@ def google_search(q)
 end
 
 
-raw_q = 'tar unzip'
-q = URI::encode("#{raw_q} stackoverflow")
-puts google_search(q).join("\n")
+#raw_q = 'tar unzip'
+#q = URI::encode("#{raw_q} stackoverflow")
+#puts google_search(q).join("\n")
 #puts get_post_commands(6987123).join("\n")
